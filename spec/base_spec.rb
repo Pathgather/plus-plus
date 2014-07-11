@@ -19,6 +19,28 @@ describe PlusPlus do
     end
   end
 
+  context "with a specified value" do
+    it "increases the column by that value on create" do
+      expect { FactoryGirl.create :comment, user: user }.to change{user.score}.from(0).to(5)
+    end
+
+    it "decreases the column by that value on destroy" do
+      expect { user_with_comment.comments[0].destroy }.to change{user_with_comment.score}.from(5).to(0)
+    end
+  end
+
+  context "with a dynamic value" do
+    it "increases the column by that value on create" do
+      expect { FactoryGirl.create :article, user: user, content: 'Test' }.to change{user.score}.from(0).to(4)
+    end
+
+    it "decreases the column by that value on destroy" do
+      expect {
+        user_with_published_article.articles[0].destroy
+      }.to change{user_with_published_article.score}.from(user_with_published_article.articles[0].content.length).to(0)
+    end
+  end
+
   context "with an if condition" do
     context "when statisfied" do
       it "increases the column by 1 on create" do

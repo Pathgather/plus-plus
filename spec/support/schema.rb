@@ -22,6 +22,7 @@ ActiveRecord::Schema.define do
     t.string :name
     t.integer :articles_count, default: 0
     t.integer :comments_count, default: 0
+    t.integer :score, default: 0
     t.timestamps
   end
 
