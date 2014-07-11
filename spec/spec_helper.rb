@@ -1,4 +1,6 @@
 require 'active_record'
+require 'factories'
+require 'factory_girl'
 require 'plus_plus'
 
 ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"

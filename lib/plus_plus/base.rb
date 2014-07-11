@@ -59,10 +59,10 @@ module PlusPlus
       association_model = self.send(association)
       raise "No association #{association}" unless association_model
       raise "No column specified" unless options[:column]
-      return if options.has_key?(:if) && !options[:if].call(self)
-      return if options.has_key?(:unless) && options[:unless].call(self)
+      return if options.has_key?(:if) && !self.instance_exec(&options[:if])
+      return if options.has_key?(:unless) && self.instance_exec(&options[:unless])
       value = if options[:value]
-        options[:value].is_a?(Proc) ? options[:value].call(self) : options[:value]
+        options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
       else
         1
       end
