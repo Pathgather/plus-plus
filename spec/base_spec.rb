@@ -17,6 +17,16 @@ describe PlusPlus do
     it "decreases the column by 1 on destroy" do
       expect { user_with_comment.comments[0].destroy }.to change{user_with_comment.comments_count}.from(1).to(0)
     end
+
+    it "updates the association with update_columns by default on create" do
+      user.should_receive(:update_columns).with({comments_count: 1})
+      FactoryGirl.create :comment, user: user
+    end
+
+    it "updates the association with update_columns by default on destroy" do
+      user_with_comment.should_receive(:update_columns).with({comments_count: 0})
+      user_with_comment.comments[0].destroy
+    end
   end
 
   context "with a specified value" do
@@ -38,6 +48,18 @@ describe PlusPlus do
       expect {
         user_with_published_article.articles[0].destroy
       }.to change{user_with_published_article.score}.from(user_with_published_article.articles[0].content.length).to(0)
+    end
+  end
+
+  context "with a different update method" do
+    it "increases the column with that update method on create" do
+      user.should_receive(:update_attributes).with({score: 5})
+      FactoryGirl.create :comment, user: user
+    end
+
+    it "decreases the column with that update method on destroy" do
+      user_with_comment.should_receive(:update_attributes).with({score: 0})
+      user_with_comment.comments[0].destroy
     end
   end
 
