@@ -9,11 +9,29 @@ FactoryGirl.define do
     factory :published_article do
       published true
     end
+
+    factory :article_with_comment do
+      after(:build) do |article, evaluator|
+        article.comments << FactoryGirl.build_list(:comment, 1, article: nil)
+      end
+    end
+
+    factory :article_with_subcomment do
+      after(:build) do |article, evaluator|
+        article.comments << FactoryGirl.build_list(:subcomment, 1, article: nil)
+      end
+    end
   end
 
   factory :comment do
     message 'Test Message'
     user
+    article
+    subcomment false
+
+    factory :subcomment do
+      subcomment true
+    end
   end
 
   factory :user do

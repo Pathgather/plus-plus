@@ -1,6 +1,9 @@
 require 'spec_helper'
 
 describe PlusPlus do
+  let(:article) { FactoryGirl.create(:article) }
+  let(:article_with_comment) { FactoryGirl.create(:article_with_comment) }
+  let(:article_with_subcomment) { FactoryGirl.create(:article_with_subcomment) }
   let(:user) { FactoryGirl.create(:user) }
   let(:user_with_comment) { FactoryGirl.create(:user_with_comment) }
   let(:user_with_published_article) { FactoryGirl.create(:user_with_published_article) }
@@ -34,6 +37,28 @@ describe PlusPlus do
 
       it "does not decrease the column on destroy" do
         expect { user_with_unpublished_article.articles[0].destroy }.to_not change{user_with_unpublished_article.articles_count}
+      end
+    end
+  end
+
+  context "with an unless condition" do
+    context "when statisfied" do
+      it "does not increase the column on create" do
+        expect { FactoryGirl.create :subcomment, article: article }.to_not change{article.comments_count}
+      end
+
+      it "does not decrease the column on destroy" do
+        expect { article_with_subcomment.comments[0].destroy }.to_not change{article_with_subcomment.comments_count}
+      end
+    end
+
+    context "when not statisfied" do
+      it "increases the column by 1 on create" do
+        expect { FactoryGirl.create :comment, article: article }.to change{article.comments_count}.from(0).to(1)
+      end
+
+      it "decreases the column by 1 on destroy" do
+        expect { article_with_comment.comments[0].destroy }.to change{article_with_comment.comments_count}.from(1).to(0)
       end
     end
   end

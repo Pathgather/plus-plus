@@ -5,12 +5,15 @@ ActiveRecord::Schema.define do
     t.integer :user_id
     t.text :content
     t.boolean :published, default: false
+    t.integer :comments_count, default: 0
     t.timestamps
   end
 
   create_table :comments, :force => true do |t|
     t.integer :user_id
+    t.integer :article_id
     t.text :message
+    t.boolean :subcomment, default: false
     t.timestamps
   end
 
