@@ -1,5 +1,6 @@
 require 'active_record'
 require 'factories'
+require "pry"
 require 'factory_girl'
 require 'plus_plus'
 

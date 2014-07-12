@@ -20,4 +20,5 @@ class Comment < ActiveRecord::Base
   plus_plus :user, column: :comments_count
   plus_plus :user, column: :score, value: 5, update_method: :update_attributes
   plus_plus :article, column: :comments_count, unless: proc { subcomment }
+  plus_plus_on_change :article, column: :comments_count, changed: :subcomment, plus: false, minus: true
 end

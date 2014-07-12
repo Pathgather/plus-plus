@@ -10,47 +10,41 @@ module PlusPlus
       }
     end
 
-    def plus_plus_on_updates(associations, options = {})
-      self.after_update {
-        dup = self.dup
-        self.changes.each { |k, v| dup[k] = v.first }  # Create a 'snapshot' of what the model did look like
-        associations.each do |association, columns|
-          association_model = self.send(association)
-          if association_model
-            updates = {}
-            columns.each do |column, value|
-              options_to_iterate = value.is_a?(Hash) ? [value] : value
-              options_to_iterate.each do |column_options|
-                offset = if column_options[:value]
-                  column_options[:value].is_a?(Proc) ? column_options[:value].call(self) : column_options[:value]
-                else
-                  1
-                end
+    def plus_plus_on_change(association, options = {})
+      self.after_update do
+        association_model = self.send(association)
+        raise "No association #{association}" if association_model.nil?
+        raise "No :column option specified" if options[:column].nil?
+        raise "No :changed option specified" if options[:changed].nil?
+        raise "No :plus option specified" if options[:plus].nil?
+        raise "No :minus option specified" if options[:minus].nil?
+        return unless self.changes.include?(options[:changed])
 
-                if self.changes.include?(column_options[:column_changed])
-                  if column_options[:switch]
-                    old_association = dup.send(association)
-                    update_old = true
-                    update_new = true
-                    if column_options[:switch].is_a?(Proc)
-                      # if old_association satisfies condition then decrement
-                      update_old = column_options[:switch].arity == 2 ? column_options[:switch].call(self, dup) : column_options[:switch].call(dup)
-                      update_new = column_options[:switch].arity == 2 ? column_options[:switch].call(self, dup) : column_options[:switch].call(self)
-                    end
-                    old_association.update_columns(column => old_association.send(column) - offset) if update_old
-                    updates[column] = association_model.send(column) + offset if update_new
-                  elsif column_options[:decrement].call(dup) && column_options[:increment].call(self)
-                    updates[column] = association_model.send(column) + offset
-                  elsif column_options[:increment].call(dup) && column_options[:decrement].call(self)
-                    updates[column] = association_model.send(column) - offset
-                  end
-                end
-              end
-            end
-            association_model.send options[:update_method] || :update_columns, updates unless updates.blank?
-          end
+        dup     = self.dup
+        changed = options[:changed]
+        column  = options[:column]
+        offset  = if options[:value]
+          options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
+        else
+          1
         end
-      }
+
+        self.changes.each { |k, v| dup[k] = v.first }  # Create a 'snapshot' of what the model did look like
+        prev_satisfied_for_minus = options[:minus].respond_to?(:call) ? dup.instance_exec(&options[:minus]) : dup.send(changed) == options[:minus]
+        self_satisfied_for_plus = options[:plus].respond_to?(:call) ? self.instance_exec(&options[:plus]) : self.send(changed) == options[:plus]
+        self_satisfied_for_minus = options[:minus].respond_to?(:call) ? self.instance_exec(&options[:minus]) : self.send(changed) == options[:minus]
+        prev_satisfied_for_plus = options[:plus].respond_to?(:call) ? dup.instance_exec(&options[:plus]) : dup.send(changed) == options[:plus]
+
+        updated_val = if prev_satisfied_for_minus && self_satisfied_for_plus
+          association_model.send(column) + offset
+        elsif prev_satisfied_for_plus && self_satisfied_for_minus
+          association_model.send(column) - offset
+        else
+          nil
+        end
+
+        association_model.send options[:update_method] || :update_columns, {column => updated_val} if updated_val
+      end
     end
   end
 
