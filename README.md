@@ -41,7 +41,7 @@ class Comment < ActiveRecord::Base
   include PlusPlus
   belongs_to :article
 
-  plus_plus :article, :comments_count, unless: proc { fake_comment }  # Only increase if the comment is legit
+  plus_plus :article, :comments_count, unless: proc { fake_comment }  # Only increase if the comment is legit. fake_comment can be an instance method, another column, etc.
 end
 ```
 
