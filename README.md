@@ -6,7 +6,7 @@ Automatically increment/decrement integer columns with any value obeying any con
 
 Add this line to your application's Gemfile:
 ```ruby
-gem 'plus_plus'
+gem 'plus-plus'
 ```
 
 ## Getting Started

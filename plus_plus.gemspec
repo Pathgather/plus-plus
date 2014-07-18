@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'plus_plus/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "plus_plus"
+  spec.name          = "plus-plus"
   spec.version       = PlusPlus::VERSION
   spec.authors       = ["Pathgather"]
   spec.email         = ["tech@pathgather.com"]
