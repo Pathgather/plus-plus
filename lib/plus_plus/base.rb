@@ -1,20 +1,25 @@
 module PlusPlus
   module Base
-    def plus_plus(association, options={})
+    def plus_plus(*args)
+      options = args.extract_options!
+      association, column = args
+
       self.after_create {
-        self.plus_plus_on_create_or_destroy(association, options)
+        self.plus_plus_on_create_or_destroy association, column, options
       }
 
       self.after_destroy {
-        self.plus_plus_on_create_or_destroy(association, options)
+        self.plus_plus_on_create_or_destroy association, column, options
       }
     end
 
-    def plus_plus_on_change(association, options = {})
+    def plus_plus_on_change(*args)
+      options = args.extract_options!
+      association, column = args
+
       self.after_update do
         association_model = self.send(association)
         raise "No association #{association}" if association_model.nil?
-        raise "No :column option specified" if options[:column].nil?
         raise "No :changed option specified" if options[:changed].nil?
         raise "No :plus option specified" if options[:plus].nil?
         raise "No :minus option specified" if options[:minus].nil?
@@ -22,7 +27,6 @@ module PlusPlus
 
         dup     = self.dup
         changed = options[:changed]
-        column  = options[:column]
         offset  = if options[:value]
           options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
         else
@@ -49,10 +53,9 @@ module PlusPlus
   end
 
   module Model
-    def plus_plus_on_create_or_destroy(association, options)
+    def plus_plus_on_create_or_destroy(association, column, options)
       association_model = self.send(association)
       raise "No association #{association}" unless association_model
-      raise "No column specified" unless options[:column]
       return if options.has_key?(:if) && !self.instance_exec(&options[:if])
       return if options.has_key?(:unless) && self.instance_exec(&options[:unless])
       value = if options[:value]
@@ -60,7 +63,6 @@ module PlusPlus
       else
         1
       end
-      column  = options[:column]
       offset  = self.destroyed? ? -(value) : value
       new_val = association_model.send(column) + offset
       association_model.send options[:update_method] || :update_columns, {column => new_val}

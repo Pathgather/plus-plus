@@ -165,7 +165,7 @@ describe PlusPlus do
         it "updates the column with that update method" do
           subcomment = FactoryGirl.create :subcomment, user: user
           user.reload
-          user.should_receive(:update_attributes).with({score: 5})
+          user.should_receive(:update_attributes).with({score: user.score + 5})
           subcomment.update_attributes subcomment: false
         end
       end
