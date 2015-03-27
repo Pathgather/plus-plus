@@ -18,8 +18,6 @@ module PlusPlus
       association, column = args
 
       self.after_update do
-        association_model = self.send(association)
-        raise "No association #{association}" if association_model.nil?
         raise "No :changed option specified" if options[:changed].nil?
         raise "No :plus option specified" if options[:plus].nil?
         raise "No :minus option specified" if options[:minus].nil?
@@ -40,8 +38,12 @@ module PlusPlus
         prev_satisfied_for_plus = options[:plus].respond_to?(:call) ? dup.instance_exec(&options[:plus]) : dup.send(changed) == options[:plus]
 
         updated_val = if prev_satisfied_for_minus && self_satisfied_for_plus
+          association_model = self.send(association)
+          raise "No association #{association}" if association_model.nil?
           association_model.send(column) + offset
         elsif prev_satisfied_for_plus && self_satisfied_for_minus
+          association_model = self.send(association)
+          raise "No association #{association}" if association_model.nil?
           association_model.send(column) - offset
         else
           nil
@@ -54,10 +56,10 @@ module PlusPlus
 
   module Model
     def plus_plus_on_create_or_destroy(association, column, options)
-      association_model = self.send(association)
-      raise "No association #{association}" unless association_model
       return if options.has_key?(:if) && !self.instance_exec(&options[:if])
       return if options.has_key?(:unless) && self.instance_exec(&options[:unless])
+      association_model = self.send(association)
+      raise "No association #{association}" unless association_model
       value = if options[:value]
         options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
       else
