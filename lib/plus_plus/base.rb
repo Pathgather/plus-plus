@@ -4,54 +4,77 @@ module PlusPlus
       options = args.extract_options!
       association, column = args
 
-      self.after_create {
-        self.plus_plus_on_create_or_destroy association, column, options
-      }
+      after_create do
+        plus_plus_on_create_or_destroy(association, column, options)
+      end
 
-      self.after_destroy {
-        self.plus_plus_on_create_or_destroy association, column, options
-      }
+      after_destroy do
+        plus_plus_on_create_or_destroy(association, column, options)
+      end
     end
 
     def plus_plus_on_change(*args)
       options = args.extract_options!
       association, column = args
 
-      self.after_update do
-        raise "No :changed option specified" if options[:changed].nil?
-        raise "No :plus option specified" if options[:plus].nil?
-        raise "No :minus option specified" if options[:minus].nil?
-        return unless self.changes.include?(options[:changed])
-
+      after_update do
         warning_about_removal_update_method_from_options(options)
 
-        dup     = self.dup
+        raise 'No :changed option specified' if options[:changed].nil?
+        raise 'No :plus option specified' if options[:plus].nil?
+        raise 'No :minus option specified' if options[:minus].nil?
+
+        association_model = send(association)
+        raise "No association #{association}" unless association_model
+
+        return unless changes.include?(options[:changed])
+
+        # Create a 'snapshot' of what the model did look like
+        dup = self.dup
+        changes.each { |k, v| dup[k] = v.first }
+
         changed = options[:changed]
-        offset  = if options[:value]
-          options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
-        else
-          1
+        prev_satisfied_for_minus = if options[:minus].respond_to?(:call)
+                                     dup.instance_exec(&options[:minus])
+                                   else
+                                     dup.send(changed) == options[:minus]
+                                   end
+        self_satisfied_for_plus = if options[:plus].respond_to?(:call)
+                                    instance_exec(&options[:plus])
+                                  else
+                                    send(changed) == options[:plus]
+                                  end
+        self_satisfied_for_minus = if options[:minus].respond_to?(:call)
+                                     instance_exec(&options[:minus])
+                                   else
+                                     send(changed) == options[:minus]
+                                   end
+        prev_satisfied_for_plus = if options[:plus].respond_to?(:call)
+                                    dup.instance_exec(&options[:plus])
+                                  else
+                                    dup.send(changed) == options[:plus]
+                                  end
+
+        value = if options[:value]
+                  if options[:value].respond_to?(:call)
+                    instance_exec(&options[:value])
+                  else
+                    options[:value]
+                  end
+                else
+                  1
+                end
+
+        offset = if prev_satisfied_for_minus && self_satisfied_for_plus
+                   value
+                 elsif prev_satisfied_for_plus && self_satisfied_for_minus
+                   -value
+                 end
+
+        if offset
+          new_val = association_model.send(column) + offset
+          association_model.update_columns(column => new_val)
         end
-
-        self.changes.each { |k, v| dup[k] = v.first }  # Create a 'snapshot' of what the model did look like
-        prev_satisfied_for_minus = options[:minus].respond_to?(:call) ? dup.instance_exec(&options[:minus]) : dup.send(changed) == options[:minus]
-        self_satisfied_for_plus = options[:plus].respond_to?(:call) ? self.instance_exec(&options[:plus]) : self.send(changed) == options[:plus]
-        self_satisfied_for_minus = options[:minus].respond_to?(:call) ? self.instance_exec(&options[:minus]) : self.send(changed) == options[:minus]
-        prev_satisfied_for_plus = options[:plus].respond_to?(:call) ? dup.instance_exec(&options[:plus]) : dup.send(changed) == options[:plus]
-
-        updated_val = if prev_satisfied_for_minus && self_satisfied_for_plus
-          association_model = self.send(association)
-          raise "No association #{association}" if association_model.nil?
-          association_model.send(column) + offset
-        elsif prev_satisfied_for_plus && self_satisfied_for_minus
-          association_model = self.send(association)
-          raise "No association #{association}" if association_model.nil?
-          association_model.send(column) - offset
-        else
-          nil
-        end
-
-        association_model.update_columns(column => updated_val) if updated_val
       end
     end
   end
@@ -76,16 +99,24 @@ module PlusPlus
     def plus_plus_on_create_or_destroy(association, column, options)
       warning_about_removal_update_method_from_options(options)
 
-      return if options.has_key?(:if) && !self.instance_exec(&options[:if])
-      return if options.has_key?(:unless) && self.instance_exec(&options[:unless])
-      association_model = self.send(association)
+      return if options.key?(:if) && !instance_exec(&options[:if])
+      return if options.key?(:unless) && instance_exec(&options[:unless])
+
+      association_model = send(association)
       raise "No association #{association}" unless association_model
+
       value = if options[:value]
-        options[:value].respond_to?(:call) ? self.instance_exec(&options[:value]) : options[:value]
-      else
-        1
-      end
-      offset  = self.destroyed? ? -(value) : value
+                if options[:value].respond_to?(:call)
+                  instance_exec(&options[:value])
+                else
+                  options[:value]
+                end
+              else
+                1
+              end
+
+      offset = destroyed? ? -value : value
+
       new_val = association_model.send(column) + offset
       association_model.update_columns(column => new_val)
     end
