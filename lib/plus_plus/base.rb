@@ -1,7 +1,25 @@
 module PlusPlus
   module Base
+    def plus_plus_warning_about_removal_update_method_from_options(options)
+      return unless options[:update_method]
+
+      puts <<-EOQ
+      WARNING:
+        `:update_method` option was removed from both `plus_plus` and
+        `plus_plus_on_change` methods and has no longer effect. Please
+        delete the option from your code as well.
+
+        See more details here: https://github.com/Pathgather/plus-plus/pull/1.
+
+        If you depend on the previous behaviour, please update your Gemfile:
+        `gem 'plus-plus', github: 'pathgather/plus-plus', ref: '6fd9910'`.\n
+      EOQ
+    end
+
     def plus_plus(*args)
       options = args.extract_options!
+      plus_plus_warning_about_removal_update_method_from_options(options)
+
       association, column = args
 
       after_create do
@@ -15,11 +33,11 @@ module PlusPlus
 
     def plus_plus_on_change(*args)
       options = args.extract_options!
+      plus_plus_warning_about_removal_update_method_from_options(options)
+
       association, column = args
 
       after_update do
-        warning_about_removal_update_method_from_options(options)
-
         raise 'No :changed option specified' if options[:changed].nil?
         raise 'No :plus option specified' if options[:plus].nil?
         raise 'No :minus option specified' if options[:minus].nil?
@@ -80,25 +98,7 @@ module PlusPlus
   end
 
   module Model
-    def warning_about_removal_update_method_from_options(options)
-      return unless options[:update_method]
-
-      puts <<-EOQ
-      WARNING:
-        `:update_method` option was removed from both `plus_plus` and
-        `plus_plus_on_change` methods and has no longer effect. Please
-        delete the option from your code as well.
-
-        See more details here: https://github.com/Pathgather/plus-plus/pull/1.
-
-        If you depend on the previous behaviour, please update your Gemfile:
-        `gem 'plus-plus', github: 'pathgather/plus-plus', ref: '6fd9910'`
-      EOQ
-    end
-
     def plus_plus_on_create_or_destroy(association, column, options)
-      warning_about_removal_update_method_from_options(options)
-
       return if options.key?(:if) && !instance_exec(&options[:if])
       return if options.key?(:unless) && instance_exec(&options[:unless])
 
