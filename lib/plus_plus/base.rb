@@ -89,15 +89,23 @@ module PlusPlus
                    -value
                  end
 
-        if offset
-          new_val = association_model.send(column) + offset
-          association_model.update_columns(column => new_val)
-        end
+        plus_plus_update(association_model, column, offset) if offset
       end
     end
   end
 
   module Model
+    def plus_plus_update(association_model, column_name, offset)
+      table_name = association_model.class.table_name
+      record_id = ActiveRecord::Base.connection.quote(association_model.id)
+
+      ActiveRecord::Base.connection.exec_update(<<-EOQ)
+        UPDATE #{table_name}
+           SET #{column_name} = #{column_name} + #{offset}
+         WHERE id = #{record_id}
+      EOQ
+    end
+
     def plus_plus_on_create_or_destroy(association, column, options)
       return if options.key?(:if) && !instance_exec(&options[:if])
       return if options.key?(:unless) && instance_exec(&options[:unless])
@@ -117,8 +125,7 @@ module PlusPlus
 
       offset = destroyed? ? -value : value
 
-      new_val = association_model.send(column) + offset
-      association_model.update_columns(column => new_val)
+      plus_plus_update(association_model, column, offset)
     end
   end
 end
