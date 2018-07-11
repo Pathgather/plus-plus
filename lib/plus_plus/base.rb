@@ -42,9 +42,6 @@ module PlusPlus
         raise 'No :plus option specified' if options[:plus].nil?
         raise 'No :minus option specified' if options[:minus].nil?
 
-        association_model = send(association)
-        raise "No association #{association}" unless association_model
-
         return unless changes.include?(options[:changed])
 
         # Create a 'snapshot' of what the model did look like
@@ -89,7 +86,12 @@ module PlusPlus
                    -value
                  end
 
-        plus_plus_update(association_model, column, offset) if offset
+        if offset
+          association_model = send(association)
+          raise "No association #{association}" unless association_model
+
+          plus_plus_update(association_model, column, offset)
+        end
       end
     end
   end
