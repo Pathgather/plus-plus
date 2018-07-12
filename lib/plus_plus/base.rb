@@ -78,10 +78,12 @@ module PlusPlus
 
   module Model
     def plus_plus_update(options, association_model, column_name, offset)
-      update_method = options.fetch(:update_method, :update_columns)
-      values = { column_name => association_model.send(column_name) + offset }
-
-      association_model.send(update_method, values)
+      association_model.with_lock do
+        association_model.send(
+          options.fetch(:update_method, :update_columns),
+          column_name => association_model.send(column_name) + offset
+        )
+      end
     end
 
     def plus_plus_on_create_or_destroy(association, column, options)
