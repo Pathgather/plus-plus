@@ -1,25 +1,7 @@
 module PlusPlus
   module Base
-    def plus_plus_warning_about_removal_update_method_from_options(options)
-      return unless options[:update_method]
-
-      puts <<-EOQ
-      WARNING:
-        `:update_method` option was removed from both `plus_plus` and
-        `plus_plus_on_change` methods and has no longer effect. Please
-        delete the option from your code as well.
-
-        See more details here: https://github.com/Pathgather/plus-plus/pull/1.
-
-        If you depend on the previous behaviour, please update your Gemfile:
-        `gem 'plus-plus', github: 'pathgather/plus-plus', ref: '6fd9910'`.\n
-      EOQ
-    end
-
     def plus_plus(*args)
       options = args.extract_options!
-      plus_plus_warning_about_removal_update_method_from_options(options)
-
       association, column = args
 
       after_create do
@@ -33,8 +15,6 @@ module PlusPlus
 
     def plus_plus_on_change(*args)
       options = args.extract_options!
-      plus_plus_warning_about_removal_update_method_from_options(options)
-
       association, column = args
 
       after_update do
@@ -90,22 +70,18 @@ module PlusPlus
           association_model = send(association)
           raise "No association #{association}" unless association_model
 
-          plus_plus_update(association_model, column, offset)
+          plus_plus_update(options, association_model, column, offset)
         end
       end
     end
   end
 
   module Model
-    def plus_plus_update(association_model, column_name, offset)
-      table_name = association_model.class.table_name
-      record_id = ActiveRecord::Base.connection.quote(association_model.id)
+    def plus_plus_update(options, association_model, column_name, offset)
+      update_method = options.fetch(:update_method, :update_columns)
+      values = { column_name => association_model.send(column_name) + offset }
 
-      ActiveRecord::Base.connection.exec_update(<<-EOQ)
-        UPDATE #{table_name}
-           SET #{column_name} = #{column_name} + #{offset}
-         WHERE id = #{record_id}
-      EOQ
+      association_model.send(update_method, values)
     end
 
     def plus_plus_on_create_or_destroy(association, column, options)
@@ -127,7 +103,7 @@ module PlusPlus
 
       offset = destroyed? ? -value : value
 
-      plus_plus_update(association_model, column, offset)
+      plus_plus_update(options, association_model, column, offset)
     end
   end
 end

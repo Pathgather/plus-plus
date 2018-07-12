@@ -80,10 +80,10 @@ class Comment < ActiveRecord::Base
   belongs_to :article
 
   plus_plus :user, :comments_count
-  plus_plus :user, :score, value: 5, unless: proc { fake_comment }
+  plus_plus :user, :score, value: 5, update_method: :update_attributes, unless: proc { fake_comment }
   plus_plus :article, :comments_count, unless: proc { fake_comment }
   plus_plus_on_change :article, :comments_count, changed: :fake_comment, plus: false, minus: true
-  plus_plus_on_change :user, :score, changed: :fake_comment, plus: proc { !fake_comment }, minus: proc { fake_comment }, value: 5
+  plus_plus_on_change :user, :score, changed: :fake_comment, plus: proc { !fake_comment }, minus: proc { fake_comment }, value: 5, update_method: :update_attributes
 end
 ```
 
@@ -94,12 +94,14 @@ Let's bring it all home now:
 - value: Defaults to 1. Can be set to a static integer value or a proc
 - if: Only update if this condition is satisifed
 - unless: Update unless this condition is satisifed
+- update_method: Defaults to update_columns to avoid triggering callbacks and to be as fast as possible. Set to update_attributes or your own custom method if you prefer callbacks or something different.
 
 **plus_plus_on_change**
 - changed: (Required) The column to monitor for a change
 - plus: (Required) The condition that must be satisfied in order to increment the column. Can be a proc (that evaluates to true/false) or a static value that will be checked for equality against the changed column
 - minus: (Required) The condition that must be satisfied in order to decrement the column. Can be a proc (that evaluates to true/false) or a static value that will be checked for equality against the changed column
 - value: Defaults to 1. Can be set to a static integer value or a proc
+- update_method: Defaults to update_columns to avoid triggering callbacks and to be as fast as possible. Set to update_attributes or your own custom method if you prefer callbacks or something different.
 
 The MIT License (MIT)
 ---------------------
