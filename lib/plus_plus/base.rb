@@ -42,20 +42,10 @@ module PlusPlus
                                                            options[:plus],
                                                            options[:changed])
 
-        value = if options[:value]
-                  if options[:value].respond_to?(:call)
-                    instance_exec(&options[:value])
-                  else
-                    options[:value]
-                  end
-                else
-                  1
-                end
-
         offset = if prev_satisfied_for_minus && self_satisfied_for_plus
-                   value
+                   plus_plus_value(options[:value])
                  elsif prev_satisfied_for_plus && self_satisfied_for_minus
-                   -value
+                   -plus_plus_value(options[:value])
                  end
 
         if offset
@@ -69,6 +59,16 @@ module PlusPlus
   end
 
   module Model
+    def plus_plus_value(value)
+      return 1 unless value
+
+      if value.respond_to?(:call)
+        instance_exec(&value)
+      else
+        value
+      end
+    end
+
     def plus_plus_satisfied_for?(object, action, changed)
       if action.respond_to?(:call)
         object.instance_exec(&action)
@@ -93,17 +93,11 @@ module PlusPlus
       association_model = send(association)
       raise "No association #{association}" unless association_model
 
-      value = if options[:value]
-                if options[:value].respond_to?(:call)
-                  instance_exec(&options[:value])
-                else
-                  options[:value]
-                end
-              else
-                1
-              end
-
-      offset = destroyed? ? -value : value
+      offset = if destroyed?
+                 -plus_plus_value(options[:value])
+               else
+                 plus_plus_value(options[:value])
+               end
 
       plus_plus_update(options, association_model, column, offset)
     end
