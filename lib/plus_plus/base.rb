@@ -28,27 +28,19 @@ module PlusPlus
         dup = self.dup
         changes.each { |k, v| dup[k] = v.first }
 
-        changed = options[:changed]
-        prev_satisfied_for_minus = if options[:minus].respond_to?(:call)
-                                     dup.instance_exec(&options[:minus])
-                                   else
-                                     dup.send(changed) == options[:minus]
-                                   end
-        self_satisfied_for_plus = if options[:plus].respond_to?(:call)
-                                    instance_exec(&options[:plus])
-                                  else
-                                    send(changed) == options[:plus]
-                                  end
-        self_satisfied_for_minus = if options[:minus].respond_to?(:call)
-                                     instance_exec(&options[:minus])
-                                   else
-                                     send(changed) == options[:minus]
-                                   end
-        prev_satisfied_for_plus = if options[:plus].respond_to?(:call)
-                                    dup.instance_exec(&options[:plus])
-                                  else
-                                    dup.send(changed) == options[:plus]
-                                  end
+        prev_satisfied_for_minus = plus_plus_satisfied_for?(dup,
+                                                            options[:minus],
+                                                            options[:changed])
+        prev_satisfied_for_plus = plus_plus_satisfied_for?(dup,
+                                                           options[:plus],
+                                                           options[:changed])
+
+        self_satisfied_for_minus = plus_plus_satisfied_for?(self,
+                                                            options[:minus],
+                                                            options[:changed])
+        self_satisfied_for_plus = plus_plus_satisfied_for?(self,
+                                                           options[:plus],
+                                                           options[:changed])
 
         value = if options[:value]
                   if options[:value].respond_to?(:call)
@@ -77,6 +69,14 @@ module PlusPlus
   end
 
   module Model
+    def plus_plus_satisfied_for?(object, action, changed)
+      if action.respond_to?(:call)
+        object.instance_exec(&action)
+      else
+        object.send(changed) == action
+      end
+    end
+
     def plus_plus_update(options, association_model, column_name, offset)
       association_model.with_lock do
         association_model.send(
