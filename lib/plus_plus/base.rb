@@ -4,57 +4,15 @@ module PlusPlus
       options = args.extract_options!
       association, column = args
 
-      after_create do
-        plus_plus_on_create_or_destroy(association, column, options)
-      end
-
-      after_destroy do
-        plus_plus_on_create_or_destroy(association, column, options)
-      end
+      self.after_create(&-> { self.plus_plus_on_create_or_destroy(association, column, options) })
+      self.after_destroy(&-> { self.plus_plus_on_create_or_destroy(association, column, options) })
     end
 
     def plus_plus_on_change(*args)
       options = args.extract_options!
       association, column = args
 
-      after_update do
-        raise 'No :changed option specified' if options[:changed].nil?
-        raise 'No :plus option specified' if options[:plus].nil?
-        raise 'No :minus option specified' if options[:minus].nil?
-
-        return unless changes.include?(options[:changed])
-
-        # Create a 'snapshot' of what the model did look like
-        dup = self.dup
-        changes.each { |k, v| dup[k] = v.first }
-
-        prev_satisfied_for_minus = plus_plus_satisfied_for?(dup,
-                                                            options[:minus],
-                                                            options[:changed])
-        prev_satisfied_for_plus = plus_plus_satisfied_for?(dup,
-                                                           options[:plus],
-                                                           options[:changed])
-
-        self_satisfied_for_minus = plus_plus_satisfied_for?(self,
-                                                            options[:minus],
-                                                            options[:changed])
-        self_satisfied_for_plus = plus_plus_satisfied_for?(self,
-                                                           options[:plus],
-                                                           options[:changed])
-
-        offset = if prev_satisfied_for_minus && self_satisfied_for_plus
-                   plus_plus_value(options[:value])
-                 elsif prev_satisfied_for_plus && self_satisfied_for_minus
-                   -plus_plus_value(options[:value])
-                 end
-
-        if offset
-          association_model = send(association)
-          raise "No association #{association}" unless association_model
-
-          plus_plus_update(options, association_model, column, offset)
-        end
-      end
+      self.after_update(&-> { self.plus_plus_on_change(association, column, options) })
     end
   end
 
@@ -98,6 +56,45 @@ module PlusPlus
                else
                  plus_plus_value(options[:value])
                end
+
+      plus_plus_update(options, association_model, column, offset)
+    end
+  end
+
+  def plus_plus_on_change(association, column, options)
+    raise 'No :changed option specified' if options[:changed].nil?
+    raise 'No :plus option specified' if options[:plus].nil?
+    raise 'No :minus option specified' if options[:minus].nil?
+
+    return unless changes.include?(options[:changed])
+
+    # Create a 'snapshot' of what the model did look like
+    dup = self.dup
+    changes.each { |k, v| dup[k] = v.first }
+
+    prev_satisfied_for_minus = plus_plus_satisfied_for?(dup,
+                                                        options[:minus],
+                                                        options[:changed])
+    prev_satisfied_for_plus  = plus_plus_satisfied_for?(dup,
+                                                        options[:plus],
+                                                        options[:changed])
+
+    self_satisfied_for_minus = plus_plus_satisfied_for?(self,
+                                                        options[:minus],
+                                                        options[:changed])
+    self_satisfied_for_plus  = plus_plus_satisfied_for?(self,
+                                                        options[:plus],
+                                                        options[:changed])
+
+    offset = if prev_satisfied_for_minus && self_satisfied_for_plus
+               plus_plus_value(options[:value])
+             elsif prev_satisfied_for_plus && self_satisfied_for_minus
+               -plus_plus_value(options[:value])
+             end
+
+    if offset
+      association_model = send(association)
+      raise "No association #{association}" unless association_model
 
       plus_plus_update(options, association_model, column, offset)
     end
